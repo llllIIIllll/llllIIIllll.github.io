@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="jp" color-mode="light">
+
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="keywords" content="" />
+  <meta name="author" content="llllIIIllll" />
+  <meta name="description" content="we comed, we leave the thing " />
+  
+  
+  <title>
+    
+      Linuxカーネルデバッグメソッドまとめ 
+      
+      
+      |
+    
+     llllIIIllll
+  </title>
+
+  
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+    <link rel="icon" href="/images/favicon.png">
+  
+
+  <!-- Raleway-Font -->
+  <link href="https://fonts.googleapis.com/css?family=Raleway&display=swap" rel="stylesheet">
+
+  <!-- hexo site css -->
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="//at.alicdn.com/t/font_1886449_67xjft27j1l.css" />
+  <!-- 代码块风格 -->
+  
+
+  <!-- jquery3.3.1 -->
+  
+    <script defer type="text/javascript" src="/plugins/jquery.min.js"></script>
+  
+
+  <!-- fancybox -->
+  
+    <link href="/plugins/jquery.fancybox.min.css" rel="stylesheet">
+    <script defer type="text/javascript" src="/plugins/jquery.fancybox.min.js"></script>
+  
+  
+<script src="/js/fancybox.js"></script>
+
+
+  
+
+  
+
+  <script>
+    var html = document.documentElement
+    const colorMode = localStorage.getItem('color-mode')
+    if (colorMode) {
+      document.documentElement.setAttribute('color-mode', colorMode)
+    }
+  </script>
+<meta name="generator" content="Hexo 6.2.0"></head>
+
+
+  <body>
+    <div id="app">
+      <div class="header">
+  <div class="avatar">
+    <a href="/">
+      <!-- 头像取消懒加载，添加no-lazy -->
+      
+        <img src="/images/avatar.png" alt="">
+      
+    </a>
+    <div class="nickname"><a href="/">llllIIIllll</a></div>
+  </div>
+  <div class="navbar">
+    <ul>
+      
+        <li class="nav-item" data-path="/">
+          <a href="/">ホーム</a>
+        </li>
+      
+        <li class="nav-item" data-path="/archives/">
+          <a href="/archives/">アーカイブス</a>
+        </li>
+      
+        <li class="nav-item" data-path="/categories/">
+          <a href="/categories/">カテゴリー</a>
+        </li>
+      
+        <li class="nav-item" data-path="/tags/">
+          <a href="/tags/">タグ</a>
+        </li>
+      
+        <li class="nav-item" data-path="/about/">
+          <a href="/about/">について</a>
+        </li>
+      
+    </ul>
+  </div>
+</div>
+
+
+<script src="/js/activeNav.js"></script>
+
+
+
+      <div class="flex-container">
+        <!-- 文章详情页，展示文章具体内容，url形式：https://yoursite/文章标题/ -->
+<!-- 同时为「标签tag」，「朋友friend」，「分类categories」，「关于about」页面的承载页面，具体展示取决于page.type -->
+
+
+  <!-- LaTex Display -->
+
+  
+    <script async type="text/javascript" src="/plugins/mathjax/tex-chtml.js"></script>
+  
+  <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']]
+      }
+    }
+  </script>
+
+
+
+
+
+  <!-- clipboard -->
+
+  
+    <script async type="text/javascript" src="/plugins/clipboard.min.js"></script>
+  
+  
+<script src="/js/codeCopy.js"></script>
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  <!-- 文章内容页 url形式：https://yoursite/文章标题/ -->
+  <div class="container post-details" id="post-details">
+    <div class="post-content">
+      <div class="post-title">Linuxカーネルデバッグメソッドまとめ</div>
+      <div class="post-attach">
+        <span class="post-pubtime">
+          <i class="iconfont icon-updatetime mr-10" title="Update time"></i>
+          2017-03-26 12:12:57
+        </span>
+        
+              <span class="post-categories">
+                <i class="iconfont icon-bookmark" title="Categories"></i>
+                
+                <span class="span--category">
+                  <a href="/categories/linux-kernel/" title="linux kernel">
+                    <b>#</b> linux kernel
+                  </a>
+                </span>
+                
+              </span>
+          
+              <span class="post-tags">
+                <i class="iconfont icon-tags mr-10" title="Tags"></i>
+                
+                <span class="span--tag mr-8">
+                  <a href="/tags/linux-kernel/" title="linux kernel">
+                    #linux kernel
+                  </a>
+                </span>
+                
+              </span>
+          
+      </div>
+      <div class="markdown-body">
+        <p>カーネル開発がユーザー空間の開発より難しい要因の1つは、カーネルのデバッグの難しさである。 カーネルエラーはシステムダウンにつながることが多く、何が問題だったのか現場を保存することが難しい。 カーネルのデバッグで重要なのは、カーネルを深く理解することです。</p>
+<h4 id="I-コミッショニング準備"><a href="#I-コミッショニング準備" class="headerlink" title="I コミッショニング準備"></a>I コミッショニング準備</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">- バグが確認されています。</span><br><span class="line">- バグを含むカーネルのバージョン番号を解析して、どのバージョンでバグが発生したかを調べる必要があり、問題解決に非常に役立つ。 二項対立の検索で、バグが発生したバージョン番号を徐々に特定することができる。</span><br><span class="line">- カーネルコードの理解が深ければ深いほどよく、ちょっとした運も必要です。</span><br><span class="line">- このバグは再現可能です。 再発パターンが見つかれば、原因究明はそう遠くないはずです。</span><br><span class="line">- システムを最小化する。 バグを発生させる要因をひとつひとつ排除していく。</span><br></pre></td></tr></table></figure>
+
+<h4 id="II-カーネルに発生するバグ"><a href="#II-カーネルに発生するバグ" class="headerlink" title="II カーネルに発生するバグ"></a>II カーネルに発生するバグ</h4><p>カーネルのバグも多様です。 その理由はさまざまで、見た目もさまざまです。 ソースコードに隠されたバグから、目に見える形で明らかになったバグまで、その発症は多くの場合、連鎖的に引き起こされる。 カーネルデバッグは難しいですが、努力と理解次第で楽しくチャレンジできるかもしれません。</p>
+<h4 id="III-カーネルデバッグコンフィギュレーションオプション"><a href="#III-カーネルデバッグコンフィギュレーションオプション" class="headerlink" title="III カーネルデバッグコンフィギュレーションオプション"></a>III カーネルデバッグコンフィギュレーションオプション</h4><h5 id="1-カーネル構成"><a href="#1-カーネル構成" class="headerlink" title="1 カーネル構成"></a>1 カーネル構成</h5><p>カーネルデバッグを可能にするために、カーネルコンフィギュレーションにいくつかの項目が追加されました。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"> Kernel hacking  ---&gt;      </span><br><span class="line"></span><br><span class="line">[*]   Magic SysRq key </span><br><span class="line"></span><br><span class="line">[*]   Kernel debugging </span><br><span class="line"></span><br><span class="line">[*]   Debug slab memory allocations   </span><br><span class="line"></span><br><span class="line">[*]   Spinlock and rw-lock debugging: basic checks </span><br><span class="line"></span><br><span class="line">[*]   Spinlock debugging: sleep-inside-spinlock checking </span><br><span class="line"></span><br><span class="line">           [*]   Compile the kernel with debug info   </span><br><span class="line"></span><br><span class="line">Device Drivers  ---&gt;   </span><br><span class="line"></span><br><span class="line">           Generic Driver Options  ---&gt; </span><br><span class="line"></span><br><span class="line">           [*]   Driver Core verbose debug messages </span><br><span class="line"></span><br><span class="line">General setup  ---&gt; </span><br><span class="line"></span><br><span class="line">           [*]   Configure standard kernel features (<span class="keyword">for</span> small systems)  ---&gt; </span><br><span class="line"></span><br><span class="line">           [*]   Load all symbols <span class="keyword">for</span> debugging/ksymoops</span><br></pre></td></tr></table></figure>
+
+<p>オプションを有効にする 例 </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">slab layer debuggingスラブレイヤーデバッグオプション </span><br><span class="line"></span><br><span class="line">high-memory debuggingハイメモリーデバッギングオプション </span><br><span class="line"></span><br><span class="line">I/O mapping debuggingI/Oマッピングのデバッグオプション </span><br><span class="line"></span><br><span class="line">spin-lock debuggingスピンロック・デバッグ・オプション </span><br><span class="line"></span><br><span class="line">stack-overflow スタックオーバーフローチェックオプション </span><br><span class="line"></span><br><span class="line">sleep-inside-spinlock checkingスリープインサイドスピンロックチェック</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h5 id="2-アトミック操作のデバッグ"><a href="#2-アトミック操作のデバッグ" class="headerlink" title="2 アトミック操作のデバッグ"></a>2 アトミック操作のデバッグ</h5><p>カーネル2.5から開発されたカーネルは、アトミック操作に起因するあらゆる種類の問題をチェックするための優れたツールを提供しています。<br>カーネルはアトミックオペレーションカウンターを提供しており、アトミックオペレーション中に着信都市がスリープしたり、スリープを引き起こすようなことをするとすぐに警告メッセージを表示し、トレースの手がかりを提供するよう設定することができる。<br>そのため、ロック中にschedule()を呼び出す、ロック中にブロッキングでメモリ割り当てを要求するなど、あらゆる潜在的なバグを検出することができる。<br>以下のオプションは、この機能を最大限に活用するものです。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">CONFIG_PREEMPT = y </span><br><span class="line"></span><br><span class="line">CONFIG_DEBUG_KERNEL = y </span><br><span class="line"></span><br><span class="line">CONFIG_KLLSYMS = y </span><br><span class="line"></span><br><span class="line">CONFIG_SPINLOCK_SLEEP = y</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h4 id="IV-バグを発生させる、メッセージを表示する"><a href="#IV-バグを発生させる、メッセージを表示する" class="headerlink" title="IV バグを発生させる、メッセージを表示する"></a>IV バグを発生させる、メッセージを表示する</h4><h5 id="1-BUG-およびBUG-ON"><a href="#1-BUG-およびBUG-ON" class="headerlink" title="1 BUG()およびBUG_ON()"></a>1 BUG()およびBUG_ON()</h5><p>多くのカーネルコールを使って、簡単にバグのフラグを立てたり、アサーションを提供したり、情報を出力したりすることができます。 よく使われるのはBUG()とBUG_ON()の2つです。</p>
+<p>&lt;include&#x2F;asm-generic&gt; で定義されています。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#ifndef HAVE_ARCH_BUG </span></span><br><span class="line"></span><br><span class="line"><span class="comment">#define BUG() do &#123; </span></span><br><span class="line"></span><br><span class="line">   printk(<span class="string">&quot;BUG: failure at %s:%d/%s()! &quot;</span>, __FILE__, __LINE__, __FUNCTION__); </span><br><span class="line"></span><br><span class="line">   panic(<span class="string">&quot;BUG!&quot;</span>);   /* より深刻なエラーが発生し、エラーメッセージが表示されるだけでなく、システム全体がハングアップしてしまう */ </span><br><span class="line"></span><br><span class="line">&#125; <span class="keyword">while</span> (0) </span><br><span class="line"></span><br><span class="line"><span class="comment">#endif </span></span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line"><span class="comment">#ifndef HAVE_ARCH_BUG_ON </span></span><br><span class="line"></span><br><span class="line">   <span class="comment">#define BUG_ON(condition) do &#123; if (unlikely(condition)) BUG(); &#125; while(0) </span></span><br><span class="line"></span><br><span class="line"><span class="comment">#endif</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>この2つのマクロが呼び出されると、OOPSが発生し、スタックトレースバックとエラーメッセージが出力されます。<br>※ BUG_ON(bad_thing) のように、この2つの呼び出しをアサーションとして使用することが可能です。</p>
+<h5 id="2-dump-stack"><a href="#2-dump-stack" class="headerlink" title="2  dump_stack()"></a>2  dump_stack()</h5><p>デバッグのために、スタック・トレースバックをターミナルに出力するだけでよい場合もあります。 そこで、dump_stack()を使用することができます。 この関数は、レジスタコンテキストと関数のトレースバックトレイルのみをターミナルに表示します。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">if (!debug_check) &#123; </span><br><span class="line"></span><br><span class="line">    printk(KERN_DEBUG “provide some information…/n”); </span><br><span class="line"></span><br><span class="line">    dump_stack(); </span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="v-printk"><a href="#v-printk" class="headerlink" title="v printk()"></a>v printk()</h4><p>カーネルが提供する書式印刷機能。</p>
+<h5 id="1-printk関数のロバスト性"><a href="#1-printk関数のロバスト性" class="headerlink" title="1 printk関数のロバスト性"></a>1 printk関数のロバスト性</h5><p>堅牢性はprintkの最も受け入れられる品質の1つであり、カーネルはほとんどどこでも、いつでも（割り込みコンテキスト、プロセスコンテキスト、ロック保持時、マルチプロセッシング時など）呼び出すことができます。</p>
+<p>#####2 printk関数の脆弱性<br> システムのブートプロセスでは、ターミナルが初期化されるまで呼び出すことができない場所があります。 どうしてもシステム起動時の一番最初のデバッグが必要な場合は、以下の方法があります。</p>
+<p>他の端末機器にデバッグ情報を出力する、シリアルデバッグを使用する。</p>
+<p>システム起動の早い段階で印刷する機能を持つearly_printk()を使用します。 ただし、一部のハードウェアシステムにしか対応していない。</p>
+<p>#####3 LOGレベル<br> printkとprintfの大きな違いは、前者がLOGレベルを指定できることです。 カーネルは、このレベルを使用して、端末にメッセージを印刷するかどうかを決定します。 カーネルは、指定されたレベルより高いメッセージをすべてターミナルに表示します。<br>       LOGレベルは、以下のように指定することができる。<br>printk(KERN_CRIT “Hello, world!\n”);<br>最初のパラメータは、レベル (KERN_CRIT) をフォーマット文字から分離するためのカンマ (,) が入っていないので、本当のパラメータではないことに注意。 kern_crit 自体は単なる普通の文字列である ( 実際には、文字列 “&lt;2&gt;” を表す。ログレベルの全リストは、表 1 に示されている )。 C言語では、プリプロセッサの一部として、文字列連結と呼ばれる関数を使って、この2つの文字列を自動的に結合する。 この組み合わせにより、ログレベルとユーザが指定したフォーマット文字列が一つの文字列として含まれることになる。</p>
+<p>カーネルは、この指定されたLOGレベルと現在の端末LOGレベル console_loglevel を用いて、端末に印刷するかどうかを決定する。<br>LOGレベルは以下の通りです。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">#define KERN_EMERG      &quot;&lt;0&gt;&quot;   /* system is unusable                            */</span><br><span class="line"></span><br><span class="line">#define KERN_ALERT        &quot;&lt;1&gt;&quot;   /* action must be taken immediately     */ </span><br><span class="line"></span><br><span class="line">#define KERN_CRIT           &quot;&lt;2&gt;&quot;   /* critical conditions                                */</span><br><span class="line"></span><br><span class="line">#define KERN_ERR            &quot;&lt;3&gt;&quot;   /* error conditions                                   */</span><br><span class="line"></span><br><span class="line">#define KERN_WARNING  &quot;&lt;4&gt;&quot;   /* warning conditions                              */</span><br><span class="line"></span><br><span class="line">#define KERN_NOTICE       &quot;&lt;5&gt;&quot;   /* normal but significant condition         */</span><br><span class="line"></span><br><span class="line">#define KERN_INFO            &quot;&lt;6&gt;&quot;   /* informational                                       */</span><br><span class="line"></span><br><span class="line">#define KERN_DEBUG        &quot;&lt;7&gt;&quot;   /* debug-level messages                       */</span><br><span class="line"></span><br><span class="line">#define KERN_DEFAULT     &quot;&lt;d&gt;&quot;   /* Use the default kernel loglevel           */</span><br></pre></td></tr></table></figure>
+
+<p>呼び出し元が printk にログレベルを提供しない場合、デフォルト値 KERN_WARNING “&lt;4&gt;” が使用されることに注意してください (KERN_WARNING レベル以上のログメッセージのみがログ収集されることを示します)。 デフォルト値にはばらつきがあるため、使用する際はLOGレベルを指定した方が良い。 例えば、通常は KERN_WARNING レベル以上の重要な LOG を出力する必要がありますが、デバッグ時には KERN_DEBUG レベル以上の詳細な LOG を出力するように選択することができます。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">mtj@ubuntu :~$ cat /proc/sys/kernel/printk</span><br><span class="line"></span><br><span class="line">4 4 1 7</span><br><span class="line"></span><br><span class="line">mtj@ubuntu :~$ cat /proc/sys/kernel/printk_delay</span><br><span class="line"></span><br><span class="line">0</span><br><span class="line"></span><br><span class="line">mtj@ubuntu :~$ cat /proc/sys/kernel/printk_ratelimit</span><br><span class="line"></span><br><span class="line">5</span><br><span class="line"></span><br><span class="line">mtj@ubuntu :~$ cat /proc/sys/kernel/printk_ratelimit_burst</span><br><span class="line"></span><br><span class="line">10</span><br></pre></td></tr></table></figure>
+
+<p>最初の項目は、printk API で現在使用されているロギングレベルを定義します。 これらのロギングレベルは、コンソールロギングレベル、デフォルトメッセージロギングレベル、最小コンソールロギングレベル、デフォルトコンソールロギングレベルを表す。 printk_delay 値は、printkメッセージ間の遅延ミリ秒数（いくつかのシナリオで読みやすくするために使用される）を表わす。 printk_ratelimit は、メッセージ間の許容最小時間間隔を定義します (現在、5 秒間に一定数のカーネルメッセージを送信すると定義されています)。 メッセージ数は printk_ratelimit_burst で定義される（現在 10 と定義されている）。 これは、非公式カーネルを使用していて、帯域幅に制限のあるコンソールデバイス（シリアルポート経由など）を使用している場合に有効です。 カーネルでは、速度制限は呼び出し側で制御され、printkには実装されていないことに注意してください。 printk ユーザーが速度制限を要求する場合、そのユーザーは printk_ratelimit 関数を呼び出す必要があります。</p>
+<p>#####4 レコードバッファ</p>
+<p>  カーネルメッセージは、LOG_BUF_LENサイズのリングキューに格納される。<br>  LOG_BUF_LENの定義について。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">#define __LOG_BUF_LEN (1 &lt;&lt; CONFIG_LOG_BUF_SHIFT)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>CONFIG_LOG_BUF_SHIFT はカーネルコンパイル時に設定ファイルによって定義され、 i386 プラットフォームではその値は以下のように定義されています (linux26&#x2F;arch&#x2F;i386&#x2F;defconfig 内)。 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CONFIG_LOG_BUF_SHIFT=18</span><br></pre></td></tr></table></figure>
+ バッファの操作を記録する。<br>  ユーザースペースにメッセージが読み出されると、このメッセージはリングキューから削除されます。<br>  メッセージ・バッファが一杯になったとき、別のprintk()呼び出しがあると、新しいメッセージはキュー内の古いメッセージを上書きします。<br>  リングキューへの読み書きを行う場合、同期の問題は簡単に解決されます。</li>
+</ul>
+<p>  このレコードバッファは、読み出し、書き込みともにリングキューで運用されるため、リングと呼ばれています。</p>
+<p>#####5  syslogd&#x2F;klogd<br>標準的なLinuxシステムでは、ユーザースペースデーモンであるklogdは、 レコードバッファからカーネルメッセージを取得し、syslogdデーモン経由でシステム ログファイルに保存します。klogdプロセスは、&#x2F;proc&#x2F;kmsgファイルまたはsyslog() システムコールからメッセージを読み込むことが可能です。 デフォルトでは、&#x2F;procの実装方法を選択します。klogdデーモンは、メッセージバッファに新しいメッセージが利用可能になるまでブロックしたままになります。 新しいカーネルメッセージが利用可能になると、klogdは起動され、カーネルメッセージを読み込んで処理します。 デフォルトでは、処理ルーチンはカーネルメッセージをsyslogdデーモンに渡し、syslogdは通常、受信したメッセージを&#x2F;var&#x2F;log&#x2F;messagesファイルに書き込みます。 ただし、&#x2F;etc&#x2F;syslog.conf ファイルによる設定は可能であり、他の出力ファイルを選択することもできます。</p>
+<p><img src="/../../../img/linux_kernel_debug/syslogd_klogd.jpg" alt="avatar"></p>
+<p>#####6  dmesg</p>
+<p>dmesgコマンドは、カーネルリングバッファーの表示と制御にも使用できます。 このコマンドは、klogctlシステムコールを使用して、カーネルリングバッファーを読み、標準出力（stdout）に転送します。 このコマンドは、カーネルリングバッファーのクリア（-c オプション）、コンソールログレベルの設定（-n オプション）、カーネルログメッセージを読むためのバッファーのサイズの定義（-s オプション）にも使用することができます。 バッファサイズが指定されていない場合、dmesg は klogctl の SYSLOG_ACTION_SIZE_BUFFER 操作を使用して、バッファサイズを決定することに注意してください。</p>
+<p>#####7 注意<br>a) printkは非常に堅牢ですが、ソースコードを読めば、この関数が非常に非効率的であることがわかります。 そのため、ドライバがパフォーマンステストやデバッグ後のリリースを行う場合は、printk出力を最小限に抑え、エラーが発生した場合にのみ少量の情報を出力することを忘れないようにしてください。 さもないと、無駄な情報をコンソールに出力することになり、パフォーマンスに影響が出ます。<br>b) printk の一時キャッシュ printk_buf は 1K しかなく、すべての printk 関数はログバッファに &lt;1K の情報しか記録できず、printk は “ringbuffer” を使用します。</p>
+<p>#####8 カーネルプリントクとロギングシステムの一般的な構造<br><img src="/../../../img/linux_kernel_debug/syslogd_klogd.jpg" alt="avatar"></p>
+<p>#####9 ダイナミックコミッショニング<br>ダイナミックデバッグは、特定のカーネルコードを動的に有効&#x2F;無効にすることで、カーネルの追加情報を取得するために使用されます。<br>まず、カーネルオプションCONFIG_DYNAMIC_DEBUGを設定する必要があります。 pr_debug()&#x2F;dev_debug()で出力されるすべての情報は、動的に表示するかしないかを選択できます。<br>表示する情報は、簡単なクエリ文によってフィルタリングすることができます。</p>
+<p>-ソースファイル名</p>
+<p>-関数名</p>
+<p>-行番号(指定範囲の行番号を含む)</p>
+<p>-モジュール名</p>
+<p>-書式設定文字列</p>
+<p><debugfs>&#x2F;dynamic_debug&#x2F;control に出力する情報のフォーマットを記述する。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nullarbor:~ # echo &#x27;file svcsock.c line 1603 +p&#x27; &gt;      &lt;debugfs&gt;/dynamic_debug/control</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      </div>
+      
+        <div class="prev-or-next">
+          <div class="post-foot-next">
+            
+              <a href="/2017/03/26/debug/ida/ida/" target="_self">
+                <i class="iconfont icon-chevronleft"></i>
+                <span>Prev</span>
+              </a>
+            
+          </div>
+          <div class="post-attach">
+            <span class="post-pubtime">
+              <i class="iconfont icon-updatetime mr-10" title="Update time"></i>
+              2017-03-26 12:12:57
+            </span>
+            
+                  <span class="post-categories">
+                    <i class="iconfont icon-bookmark" title="Categories"></i>
+                    
+                    <span class="span--category">
+                      <a href="/categories/linux-kernel/" title="linux kernel">
+                        <b>#</b> linux kernel
+                      </a>
+                    </span>
+                    
+                  </span>
+              
+                  <span class="post-tags">
+                    <i class="iconfont icon-tags mr-10" title="Tags"></i>
+                    
+                    <span class="span--tag mr-8">
+                      <a href="/tags/linux-kernel/" title="linux kernel">
+                        #linux kernel
+                      </a>
+                    </span>
+                    
+                  </span>
+              
+          </div>
+          <div class="post-foot-prev">
+            
+              <a href="/2017/05/26/debug/linux/linux_debug/" target="_self">
+                <span>Next</span>
+                <i class="iconfont icon-chevronright"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+    </div>
+    
+  <div id="btn-catalog" class="btn-catalog">
+    <i class="iconfont icon-catalog"></i>
+  </div>
+  <div class="post-catalog hidden" id="catalog">
+    <div class="title">Contents</div>
+    <div class="catalog-content">
+      
+        <ol class="toc"><li class="toc-item toc-level-4"><a class="toc-link" href="#I-%E3%82%B3%E3%83%9F%E3%83%83%E3%82%B7%E3%83%A7%E3%83%8B%E3%83%B3%E3%82%B0%E6%BA%96%E5%82%99"><span class="toc-text">I コミッショニング準備</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#II-%E3%82%AB%E3%83%BC%E3%83%8D%E3%83%AB%E3%81%AB%E7%99%BA%E7%94%9F%E3%81%99%E3%82%8B%E3%83%90%E3%82%B0"><span class="toc-text">II カーネルに発生するバグ</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#III-%E3%82%AB%E3%83%BC%E3%83%8D%E3%83%AB%E3%83%87%E3%83%90%E3%83%83%E3%82%B0%E3%82%B3%E3%83%B3%E3%83%95%E3%82%A3%E3%82%AE%E3%83%A5%E3%83%AC%E3%83%BC%E3%82%B7%E3%83%A7%E3%83%B3%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3"><span class="toc-text">III カーネルデバッグコンフィギュレーションオプション</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#1-%E3%82%AB%E3%83%BC%E3%83%8D%E3%83%AB%E6%A7%8B%E6%88%90"><span class="toc-text">1 カーネル構成</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-%E3%82%A2%E3%83%88%E3%83%9F%E3%83%83%E3%82%AF%E6%93%8D%E4%BD%9C%E3%81%AE%E3%83%87%E3%83%90%E3%83%83%E3%82%B0"><span class="toc-text">2 アトミック操作のデバッグ</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#IV-%E3%83%90%E3%82%B0%E3%82%92%E7%99%BA%E7%94%9F%E3%81%95%E3%81%9B%E3%82%8B%E3%80%81%E3%83%A1%E3%83%83%E3%82%BB%E3%83%BC%E3%82%B8%E3%82%92%E8%A1%A8%E7%A4%BA%E3%81%99%E3%82%8B"><span class="toc-text">IV バグを発生させる、メッセージを表示する</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#1-BUG-%E3%81%8A%E3%82%88%E3%81%B3BUG-ON"><span class="toc-text">1 BUG()およびBUG_ON()</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-dump-stack"><span class="toc-text">2  dump_stack()</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#v-printk"><span class="toc-text">v printk()</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#1-printk%E9%96%A2%E6%95%B0%E3%81%AE%E3%83%AD%E3%83%90%E3%82%B9%E3%83%88%E6%80%A7"><span class="toc-text">1 printk関数のロバスト性</span></a></li></ol></li></ol>
+      
+    </div>
+  </div>
+
+  
+<script src="/js/catalog.js"></script>
+
+
+
+
+    
+      <div class="comments-container">
+        
+
+
+
+
+
+
+
+      </div>
+    
+  </div>
+
+
+        
+<div class="footer">
+  <div class="social">
+    <ul>
+      
+        <li>
+          <a title="github" target="_blank" rel="noopener" href="https://github.com/zchengsite/hexo-theme-oranges">
+            <i class="iconfont icon-github"></i>
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+  
+    
+    <div class="footer-more">
+      
+        <a target="_blank" rel="noopener" href="https://github.com/llllIIIllll">Copyright © 2022</a>
+        
+    </div>
+  
+    
+    <div class="footer-more">
+      
+        <a target="_blank" rel="noopener" href="https://github.com/llllIIIllll">Theme by Oranges | Powered by Hexo</a>
+        
+    </div>
+  
+  
+</div>
+
+      </div>
+
+      <div class="tools-bar">
+        <div class="back-to-top tools-bar-item hidden">
+  <a href="javascript: void(0)">
+    <i class="iconfont icon-chevronup"></i>
+  </a>
+</div>
+
+
+<script src="/js/backtotop.js"></script>
+
+
+
+        
+  <div class="search-icon tools-bar-item" id="search-icon">
+    <a href="javascript: void(0)">
+      <i class="iconfont icon-search"></i>
+    </a>
+  </div>
+
+  <div class="search-overlay hidden">
+    <div class="search-content" tabindex="0">
+      <div class="search-title">
+        <span class="search-icon-input">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-search"></i>
+          </a>
+        </span>
+        
+          <input type="text" class="search-input" id="search-input" placeholder="Search...">
+        
+        <span class="search-close-icon" id="search-close-icon">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-close"></i>
+          </a>
+        </span>
+      </div>
+      <div class="search-result" id="search-result"></div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    var inputArea = document.querySelector("#search-input")
+    var searchOverlayArea = document.querySelector(".search-overlay")
+
+    inputArea.onclick = function() {
+      getSearchFile()
+      this.onclick = null
+    }
+
+    inputArea.onkeydown = function() {
+      if(event.keyCode == 13)
+        return false
+    }
+
+    function openOrHideSearchContent() {
+      let isHidden = searchOverlayArea.classList.contains('hidden')
+      if (isHidden) {
+        searchOverlayArea.classList.remove('hidden')
+        document.body.classList.add('hidden')
+        // inputArea.focus()
+      } else {
+        searchOverlayArea.classList.add('hidden')
+        document.body.classList.remove('hidden')
+      }
+    }
+
+    function blurSearchContent(e) {
+      if (e.target === searchOverlayArea) {
+        openOrHideSearchContent()
+      }
+    }
+
+    document.querySelector("#search-icon").addEventListener("click", openOrHideSearchContent, false)
+    document.querySelector("#search-close-icon").addEventListener("click", openOrHideSearchContent, false)
+    searchOverlayArea.addEventListener("click", blurSearchContent, false)
+
+    var searchFunc = function (path, search_id, content_id) {
+      'use strict';
+      var $input = document.getElementById(search_id);
+      var $resultContent = document.getElementById(content_id);
+      $resultContent.innerHTML = "<ul><span class='local-search-empty'>First search, index file loading, please wait...<span></ul>";
+      $.ajax({
+        // 0x01. load xml file
+        url: path,
+        dataType: "xml",
+        success: function (xmlResponse) {
+          // 0x02. parse xml file
+          var datas = $("entry", xmlResponse).map(function () {
+            return {
+              title: $("title", this).text(),
+              content: $("content", this).text(),
+              url: $("url", this).text()
+            };
+          }).get();
+          $resultContent.innerHTML = "";
+
+          $input.addEventListener('input', function () {
+            // 0x03. parse query to keywords list
+            var str = '<ul class=\"search-result-list\">';
+            var keywords = this.value.trim().toLowerCase().split(/[\s\-]+/);
+            $resultContent.innerHTML = "";
+            if (this.value.trim().length <= 0) {
+              return;
+            }
+            // 0x04. perform local searching
+            datas.forEach(function (data) {
+              var isMatch = true;
+              var content_index = [];
+              if (!data.title || data.title.trim() === '') {
+                data.title = "Untitled";
+              }
+              var orig_data_title = data.title.trim();
+              var data_title = orig_data_title.toLowerCase();
+              var orig_data_content = data.content.trim().replace(/<[^>]+>/g, "");
+              var data_content = orig_data_content.toLowerCase();
+              var data_url = data.url;
+              var index_title = -1;
+              var index_content = -1;
+              var first_occur = -1;
+              // only match artiles with not empty contents
+              if (data_content !== '') {
+                keywords.forEach(function (keyword, i) {
+                  index_title = data_title.indexOf(keyword);
+                  index_content = data_content.indexOf(keyword);
+
+                  if (index_title < 0 && index_content < 0) {
+                    isMatch = false;
+                  } else {
+                    if (index_content < 0) {
+                      index_content = 0;
+                    }
+                    if (i == 0) {
+                      first_occur = index_content;
+                    }
+                    // content_index.push({index_content:index_content, keyword_len:keyword_len});
+                  }
+                });
+              } else {
+                isMatch = false;
+              }
+              // 0x05. show search results
+              if (isMatch) {
+                str += "<li><a href='" + data_url + "' class='search-result-title'>" + orig_data_title + "</a>";
+                var content = orig_data_content;
+                if (first_occur >= 0) {
+                  // cut out 100 characters
+                  var start = first_occur - 20;
+                  var end = first_occur + 80;
+
+                  if (start < 0) {
+                    start = 0;
+                  }
+
+                  if (start == 0) {
+                    end = 100;
+                  }
+
+                  if (end > content.length) {
+                    end = content.length;
+                  }
+
+                  var match_content = content.substr(start, end);
+
+                  // highlight all keywords
+                  keywords.forEach(function (keyword) {
+                    var regS = new RegExp(keyword, "gi");
+                    match_content = match_content.replace(regS, "<span class=\"search-keyword\">" + keyword + "</span>");
+                  });
+
+                  str += "<p class=\"search-result-abstract\">" + match_content + "...</p>"
+                }
+                str += "</li>";
+              }
+            });
+            str += "</ul>";
+            if (str.indexOf('<li>') === -1) {
+              return $resultContent.innerHTML = "<ul><span class='local-search-empty'>No result<span></ul>";
+            }
+            $resultContent.innerHTML = str;
+          });
+        },
+        error: function(xhr, status, error) {
+          $resultContent.innerHTML = ""
+          if (xhr.status === 404) {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>The search.xml file was not found, please refer to：<a href='https://github.com/zchengsite/hexo-theme-oranges#configuration' target='_black'>configuration</a><span></ul>";
+          } else {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>The request failed, Try to refresh the page or try again later.<span></ul>";
+          }
+        }
+      });
+      $(document).on('click', '#search-close-icon', function() {
+        $('#search-input').val('');
+        $('#search-result').html('');
+      });
+    }
+
+    var getSearchFile = function() {
+        var path = "/search.xml";
+        searchFunc(path, 'search-input', 'search-result');
+    }
+  </script>
+
+
+
+
+        
+  <div class="tools-bar-item theme-icon" id="switch-color-scheme">
+    <a href="javascript: void(0)">
+      <i id="theme-icon" class="iconfont icon-moon"></i>
+    </a>
+  </div>
+
+  
+<script src="/js/colorscheme.js"></script>
+
+
+
+
+
+        
+  
+    <div class="share-icon tools-bar-item">
+      <a href="javascript: void(0)" id="share-icon">
+        <i class="iconfont iconshare"></i>
+      </a>
+      <div class="share-content hidden">
+        
+          <a class="share-item" href="https://twitter.com/intent/tweet?text=' + Linux%E3%82%AB%E3%83%BC%E3%83%8D%E3%83%AB%E3%83%87%E3%83%90%E3%83%83%E3%82%B0%E3%83%A1%E3%82%BD%E3%83%83%E3%83%89%E3%81%BE%E3%81%A8%E3%82%81 + '&url=' + http%3A%2F%2Fexample.com%2F2017%2F03%2F26%2Fdebug%2Flinux%2Flinux_kernel_debug%2F + '" target="_blank" title="Twitter">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        
+        
+          <a class="share-item" href="https://www.facebook.com/sharer.php?u=http://example.com/2017/03/26/debug/linux/linux_kernel_debug/" target="_blank" title="Facebook">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        
+      </div>
+    </div>
+  
+  
+<script src="/js/shares.js"></script>
+
+
+
+      </div>
+    </div>
+  </body>
+</html>
