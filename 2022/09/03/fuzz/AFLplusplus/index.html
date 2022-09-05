@@ -329,6 +329,9 @@
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">afl-fuzz -m none -i in -o out ./handshake</span><br></pre></td></tr></table></figure>
 
 <p>しばらく走って、無事クラッシュがなくなった後。</p>
+<p>AFL_USE_ASAN&#x3D;1 afl-clang-fast++ -g handshake.cc &#x2F;home&#x2F;lzt&#x2F;openssl&#x2F;libcrypto.a &#x2F;home&#x2F;lzt&#x2F;openssl&#x2F;libssl.a  -o handshake -I ~&#x2F;Desktop&#x2F;openssl&#x2F;include -ldl</p>
+<p>ANSWERS.mdとHINTS.mdを見ると、ASANが有効になっているので、docs&#x2F;notes_for_asan.txtを読むと良いと書いてあります。 ドキュメントを読んでみると、ファズのためにASANを有効にすると、メモリを600-800m程度消費するので32ビットプログラムを実行すると良いことがわかりますが、一方で 64bitの場合、消費するメモリは17.5TB～20TB程度となるため、64bitのプログラムを直接実行するとエラーが発生する可能性があります。</p>
+<p>どうしても実行したい場合は、root 権限で asan_cgroups&#x2F;limit_memory.sh スクリプトを呼び出します (sudo ~&#x2F;AFLplusplus&#x2F;examples&#x2F;asan_cgroups&#x2F;limit_memory.sh -u fuzzer afl-fuzz -i in) 。-o out -m none . &#x2F;handshake); 上記のように -m none を渡して実行することもできますが、この場合、プログラムがメモリを過剰に消費してしまい、システムによって強制終了される可能性があります。</p>
 
       </div>
       
@@ -476,7 +479,7 @@
           </a>
         </span>
         
-          <input type="text" class="search-input" id="search-input" placeholder="Search...">
+          <input type="text" class="search-input" id="search-input" placeholder="キーワード">
         
         <span class="search-close-icon" id="search-close-icon">
           <a href="javascript: void(0)">
